@@ -3,35 +3,32 @@
  * See https://developer.valvesoftware.com/wiki/Source_RCON_Protocol for
  * more information about Source RCON Packets
  *
- * PHP Version 7
+ * PHP Version 8.2
  *
  * @copyright 2013-2017 Chris Churchwell
  * @author thedudeguy
- * @link https://github.com/thedudeguy/PHP-Minecraft-Rcon
+ * @copyright 2023 
+ * @author Rohydorm
+ * @link https://github.com/rohydorm/PHP-Minecraft-Rcon
  */
 
-namespace Thedudeguy;
+namespace Minetools\Protocols;
 
 class Rcon
 {
-    private $host;
-    private $port;
-    private $password;
-    private $timeout;
-
     private $socket;
 
-    private $authorized = false;
+    private bool $authorized = false;
     private $lastResponse = '';
 
-    const PACKET_AUTHORIZE = 5;
-    const PACKET_COMMAND = 6;
-    const PACKET_COMMAND_ENDING = 7;
+    final public const PACKET_AUTHORIZE = 5;
+    final public const PACKET_COMMAND = 6;
+    final public const PACKET_COMMAND_ENDING = 7;
 
-    const SERVERDATA_AUTH = 3;
-    const SERVERDATA_AUTH_RESPONSE = 2;
-    const SERVERDATA_EXECCOMMAND = 2;
-    const SERVERDATA_RESPONSE_VALUE = 0;
+    final public const SERVERDATA_AUTH = 3;
+    final public const SERVERDATA_AUTH_RESPONSE = 2;
+    final public const SERVERDATA_EXECCOMMAND = 2;
+    final public const SERVERDATA_RESPONSE_VALUE = 0;
 
     /**
      * Create a new instance of the Rcon class.
@@ -41,12 +38,13 @@ class Rcon
      * @param string $password
      * @param integer $timeout
      */
-    public function __construct($host, $port, $password, $timeout)
+    public function __construct(
+        private string $host,
+        private int $port,
+        private string $password,
+        private int $timeout)
     {
-        $this->host = $host;
-        $this->port = $port;
-        $this->password = $password;
-        $this->timeout = $timeout;
+        $this->connect();
     }
 
     /**
@@ -54,7 +52,7 @@ class Rcon
      *
      * @return string
      */
-    public function getResponse()
+    public function getResponse() : string
     {
         return $this->lastResponse;
     }
@@ -64,7 +62,7 @@ class Rcon
      *
      * @return boolean
      */
-    public function connect()
+    private function connect() : bool
     {
         $this->socket = fsockopen($this->host, $this->port, $errno, $errstr, $this->timeout);
 
@@ -85,10 +83,10 @@ class Rcon
      *
      * @return void
      */
-    public function disconnect()
+    public function disconnect() : void
     {
         if ($this->socket) {
-                    fclose($this->socket);
+            fclose($this->socket);
         }
     }
 
@@ -97,7 +95,7 @@ class Rcon
      *
      * @return boolean
      */
-    public function isConnected()
+    public function isConnected() : bool
     {
         return $this->authorized;
     }
@@ -109,10 +107,10 @@ class Rcon
      *
      * @return boolean|mixed
      */
-    public function sendCommand($command)
+    public function sendCommand($command) : mixed
     {
         if (!$this->isConnected()) {
-                    return false;
+            $this->connect();
         }
 
         // send command packet
@@ -142,17 +140,14 @@ class Rcon
      *
      * @return boolean
      */
-    private function authorize()
+    private function authorize() : bool
     {
         $this->writePacket(self::PACKET_AUTHORIZE, self::SERVERDATA_AUTH, $this->password);
         $response_packet = $this->readPacket();
 
-        if ($response_packet['type'] == self::SERVERDATA_AUTH_RESPONSE) {
-            if ($response_packet['id'] == self::PACKET_AUTHORIZE) {
-                $this->authorized = true;
-
-                return true;
-            }
+        if ($response_packet['type'] == self::SERVERDATA_AUTH_RESPONSE && $response_packet['id'] == self::PACKET_AUTHORIZE) {
+            $this->authorized = true;
+            return true;
         }
 
         $this->disconnect();
@@ -168,7 +163,7 @@ class Rcon
      *
      * @return void
      */
-    private function writePacket($packetId, $packetType, $packetBody)
+    private function writePacket($packetId, $packetType, $packetBody) : void
     {
         /*
 		Size			32-bit little-endian Signed Integer	 	Varies, see below.
@@ -181,7 +176,7 @@ class Rcon
         //create packet
         $packet = pack('VV', $packetId, $packetType);
         $packet = $packet.$packetBody."\x00";
-        $packet = $packet."\x00";
+        $packet .= "\x00";
 
         // get packet size.
         $packet_size = strlen($packet);
@@ -198,7 +193,7 @@ class Rcon
      *
      * @return array
      */
-    private function readPacket()
+    private function readPacket() : array
     {
         //get packet size.
         $size_data = fread($this->socket, 4);
@@ -212,8 +207,8 @@ class Rcon
         // currently, this script does not support multi-packet responses.
 
         $packet_data = fread($this->socket, $size);
-        $packet_pack = unpack('V1id/V1type/a*body', $packet_data);
 
-        return $packet_pack;
+        return unpack('V1id/V1type/a*body', $packet_data);
+        
     }
 }
