@@ -75,7 +75,7 @@ class Rcon
         stream_set_timeout($this->socket, 3, 0);
 
         // check authorization
-        return $this->authorize();
+        return self::authorize();
     }
 
     /**
@@ -110,21 +110,21 @@ class Rcon
     public function sendCommand($command) : mixed
     {
         if (!$this->isConnected()) {
-            $this->connect();
+            self::connect();
         }
 
         // send command packet
-        $this->writePacket(self::PACKET_COMMAND, self::SERVERDATA_EXECCOMMAND, $command);
+        self::writePacket(self::PACKET_COMMAND, self::SERVERDATA_EXECCOMMAND, $command);
 
         // send additional packet to determine last response packet later
-        $this->writePacket(self::PACKET_COMMAND_ENDING, self::SERVERDATA_EXECCOMMAND, 'ping');
+        self::writePacket(self::PACKET_COMMAND_ENDING, self::SERVERDATA_EXECCOMMAND, 'ping');
 
         // get response
         $response = '';
-        $response_packet = $this->readPacket();
+        $response_packet = self::readPacket();
         while ($response_packet['id'] == self::PACKET_COMMAND && $response_packet['type'] == self::SERVERDATA_RESPONSE_VALUE) {
             $response .= $response_packet['body'];
-            $response_packet = $this->readPacket();
+            $response_packet = self::readPacket();
         }
         $response = substr($response, 0, -3);
         if ($response != '') {
@@ -142,8 +142,8 @@ class Rcon
      */
     private function authorize() : bool
     {
-        $this->writePacket(self::PACKET_AUTHORIZE, self::SERVERDATA_AUTH, $this->password);
-        $response_packet = $this->readPacket();
+        self::writePacket(self::PACKET_AUTHORIZE, self::SERVERDATA_AUTH, $this->password);
+        $response_packet = self::readPacket();
 
         if ($response_packet['type'] == self::SERVERDATA_AUTH_RESPONSE && $response_packet['id'] == self::PACKET_AUTHORIZE) {
             $this->authorized = true;
