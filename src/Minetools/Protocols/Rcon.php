@@ -50,11 +50,16 @@ class Rcon
     /**
      * Get the latest response from the server.
      *
+     * @param bool $clearFormat
+     * 
      * @return string
      */
-    public function getResponse() : string
+    public function getResponse(bool $clearFormat) : string
     {
-        return $this->lastResponse;
+        return match($clearFormat) {
+            true => self::cleanResponse($this->lastResponse),
+            false => $this->lastResponse,
+        };
     }
 
     /**
@@ -107,7 +112,7 @@ class Rcon
      *
      * @return boolean|mixed
      */
-    public function sendCommand($command) : mixed
+    public function sendCommand(string $command, bool $clearFormat = true) : mixed
     {
         if (!$this->isConnected()) {
             self::connect();
@@ -128,11 +133,26 @@ class Rcon
         }
         $response = substr($response, 0, -3);
         if ($response != '') {
-            $this->lastResponse = $response_packet['body'];
+            $this->lastResponse = match($clearFormat) {
+                true => self::cleanResponse($response),
+                false => $response,
+            };
             return $response;
         }
 
         return false;
+    }
+
+    /**
+     * Clear Minecraft format
+     * 
+     * @param string $response
+     * 
+     * @return string
+     */
+    private function cleanResponse(string $response) : string
+    {
+        return filter_var(preg_replace('/\xa7./','',$response), FILTER_SANITIZE_SPECIAL_CHARS, FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH);
     }
 
     /**
